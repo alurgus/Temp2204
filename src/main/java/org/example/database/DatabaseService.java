@@ -1,85 +1,73 @@
 package org.example.database;
 
-/*package database;*/
-
-/*import animals.Animal;*/
-
 import org.example.animals.Animal;
 import org.example.animals.AnimalFactory;
 
-import java.io.FileInputStream;
 import java.sql.*;
+import java.sql.Date;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/*import animals.Animal;*/
 
 public class DatabaseService {
-    private static Connection connection;
+    private final String url;
+    private final String user;
+    private final String password;
 
-    // Инициализация подключения
-    public static void connect() {
-        try {
-            Properties props = new Properties();
-            props.load(new FileInputStream("src/main/resources/config.properties"));
-
-            String url = props.getProperty("db.url");
-            String user = props.getProperty("db.user");
-            String password = props.getProperty("db.password");
-
-            connection = DriverManager.getConnection(url, user, password);
-            System.out.println("✅ Подключение к базе установлено.");
-        } catch (Exception e) {
-            throw new RuntimeException("Ошибка подключения к базе данных", e);
-        }
+    public DatabaseService(String url, String user, String password) {
+        this.url = url;
+        this.user = user;
+        this.password = password;
     }
 
-    // Сохранение животного
-    public static void saveAnimal(Animal animal) {
+    private Connection connect() throws SQLException {
+        return DriverManager.getConnection(url, user, password);
+    }
+
+    public void saveAnimal(Animal animal) {
         String sql = "INSERT INTO animals (name, type, birth_date, commands) VALUES (?, ?, ?, ?)";
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+        try (Connection conn = connect();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             stmt.setString(1, animal.getName());
-            stmt.setString(2, animal.getType());
-            stmt.setDate(3, Date.valueOf(animal.getBirthDate()));
+            stmt.setString(2, animal.getClass().getSimpleName());
+            stmt.setDate(3, Date.valueOf(animal.getBirthday()));
             stmt.setString(4, String.join(",", animal.getCommands()));
 
             stmt.executeUpdate();
-            System.out.println("Животное сохранено в базу.");
+            System.out.println("✅ Животное сохранено в базу.");
         } catch (SQLException e) {
-            throw new RuntimeException("Ошибка при сохранении животного", e);
+            System.err.println("Ошибка при сохранении: " + e.getMessage());
         }
     }
 
-    // Загрузка всех животных
-    public static List<Animal> loadAnimals() {
-        List<Animal> list = new ArrayList<>();
+    public List<Animal> loadAnimals() {
+        List<Animal> result = new ArrayList<>();
+        String sql = "SELECT * FROM animals";
 
-        try (Statement stmt = connection.createStatement()) {
-            ResultSet rs = stmt.executeQuery("SELECT * FROM animals");
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                String name = rs.getString("name");
                 String type = rs.getString("type");
-                LocalDate birth = rs.getDate("birth_date").toLocalDate();
-                String[] cmds = rs.getString("commands").split(",");
+                String name = rs.getString("name");
+                LocalDate birthDate = rs.getDate("birth_date").toLocalDate();
+                List<String> commands = Arrays.stream(rs.getString("commands").split(","))
+                        .map(String::trim).collect(Collectors.toList());
 
-                Animal animal = AnimalFactory.create(type, name, birth, cmds);
-                for (String cmd : cmds) {
-                    animal.learnCommand(cmd);
-                }
-                list.add(animal);
+                // здесь можно использовать фабрику
+                Animal animal = AnimalFactory.create(type, name, birthDate, commands);
+                result.add(animal);
             }
+
         } catch (SQLException e) {
-            throw new RuntimeException("Ошибка при загрузке животных", e);
+            System.err.println("Ошибка при загрузке: " + e.getMessage());
         }
 
-        return list;
-    }
-
-    public static void disconnect() {
-        try {
-            if (connection != null) connection.close();
-        } catch (SQLException ignored) {}
+        return result;
     }
 }

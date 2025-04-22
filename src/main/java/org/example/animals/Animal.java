@@ -29,6 +29,8 @@ public abstract class Animal {
                 Period.between(birthday, LocalDate.now()).getMonths();
     }
 
+    
+    
     public List<String> getCommands() {
         return commands;
     }
@@ -46,5 +48,10 @@ public abstract class Animal {
     @Override
     public String toString() {
         return name + " (" + birthday + ") — Команды: " + commands;
+    }
+
+
+    public String getType() {
+        return null;
     }
 }

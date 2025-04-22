@@ -14,6 +14,8 @@ public class AnimalFactory {
             default -> null;
         };
 
+
+
         if (animal != null) {
             for (String cmd : commands) {
                 animal.train(cmd);
@@ -22,4 +24,7 @@ public class AnimalFactory {
 
         return animal;
     }
+
+
+
 }
