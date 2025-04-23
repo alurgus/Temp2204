@@ -1,16 +1,47 @@
 package org.example;
 
 import org.example.animals.*;
+import org.example.database.DatabaseService;
 import org.example.utils.Counter;
 
 import java.time.LocalDate;
 import java.util.*;
 
+import java.io.InputStream;
+import java.util.Properties;
+
 public class RegistryApp {
     private static List<Animal> animals = new ArrayList<>();
     private static Scanner scanner = new Scanner(System.in);
+    private static DatabaseService db;
+
+    public class Config {
+        public static Properties load() {
+            Properties props = new Properties();
+            try (InputStream input = Config.class.getClassLoader().getResourceAsStream("config.properties")) {
+                if (input == null) {
+                    throw new RuntimeException("Файл config.properties не найден");
+                }
+                props.load(input);
+            } catch (Exception e) {
+                throw new RuntimeException("Ошибка загрузки config.properties: " + e.getMessage());
+            }
+            return props;
+        }
+    }
 
     public static void main(String[] args) {
+
+        Properties config = Config.load(); // загружаем config.properties
+        System.out.println("Connecting to: " + config.getProperty("db.url"));
+
+         db = new DatabaseService(
+                config.getProperty("db.url"),
+                config.getProperty("db.user"),
+                config.getProperty("db.password")
+        );
+
+
         boolean running = true;
 
         while (running) {
@@ -48,15 +79,35 @@ public class RegistryApp {
             System.out.println("Введите дату рождения (ГГГГ-ММ-ДД):");
             LocalDate birthday = LocalDate.parse(scanner.nextLine());
 
-            System.out.println("Выберите тип животного: dog / cat / hamster / horse / donkey");
-            String type = scanner.nextLine().toLowerCase();
+            /*System.out.println("Выберите тип животного: dog / cat / hamster / horse / donkey");
+            String type = scanner.nextLine().toLowerCase();*/
+
+            Map<String, String> typeMap = Map.of(
+                    "1", "dogs",
+                    "2", "cats",
+                    "3", "hamsters",
+                    "4", "horses",
+                    "5", "donkeys"
+            );
+
+            System.out.println("""
+                    Выберите тип животного:
+                    1. Dog
+                    2. Cat
+                    3. Hamster
+                    4. Horse
+                    5. Donkey
+                    """);
+
+            String input = scanner.nextLine().toLowerCase();
+            String type = typeMap.getOrDefault(input, input); // если введена строка (dog), то останется как есть
 
             Animal animal = switch (type) {
-                case "dog" -> new Dog(name, birthday);
-                case "cat" -> new Cat(name, birthday);
-                case "hamster" -> new Hamster(name, birthday);
-                case "horse" -> new Horse(name, birthday);
-                case "donkey" -> new Donkey(name, birthday);
+                case "dogs" -> new Dogs(name, birthday);
+                case "cats" -> new Cats(name, birthday);
+                case "hamsters" -> new Hamsters(name, birthday);
+                case "horses" -> new Horses(name, birthday);
+                case "donkeys" -> new Donkeys(name, birthday);
                 default -> {
                     System.out.println("Неизвестный тип.");
                     yield null;
@@ -65,6 +116,7 @@ public class RegistryApp {
 
             if (animal != null) {
                 animals.add(animal);
+                db.saveAnimal(animal);
                 counter.add(); // увеличиваем счётчик
                 System.out.println("Животное добавлено: " + animal.getName());
             }
