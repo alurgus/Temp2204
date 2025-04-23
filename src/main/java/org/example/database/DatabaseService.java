@@ -56,15 +56,25 @@ public class DatabaseService {
     public void saveAnimal(Animal animal) {
         /*String sql = "INSERT INTO all_animals (name, commands, birthday,source_table ) VALUES (?, ?, ?, ?)";*/
         String tableName = animal.getClass().getSimpleName().toLowerCase(); // например: "dog", "cat", и т.д.
-        String sql = "INSERT INTO " + tableName + " (name, commands, birthday) VALUES (?, ?, ?)";
+        String sql1 = "INSERT INTO " + tableName + " (name, commands, birthday) VALUES (?, ?, ?)";
+        String sql2 = "INSERT INTO all_animals (name, birthday, commands, source_table) VALUES (?, ?, ?, ?)";
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, animal.getName());
-            stmt.setString(2, String.join(",", animal.getCommands()));
-            stmt.setDate(3, Date.valueOf(animal.getBirthday()));
-            /*stmt.setString(4, animal.getClass().getSimpleName());*/
-            stmt.executeUpdate();
-            System.out.println("✅ Животное сохранено в базу");
+        try (PreparedStatement stmt1 = connection.prepareStatement(sql1);
+             PreparedStatement stmt2 = connection.prepareStatement(sql2)) {
+                stmt1.setString(1, animal.getName());
+                stmt1.setString(2, String.join(",", animal.getCommands()));
+                stmt1.setDate(3, Date.valueOf(animal.getBirthday()));
+
+                stmt2.setString(1, animal.getName());
+                stmt2.setDate(2, Date.valueOf(animal.getBirthday()));
+                stmt2.setString(3, String.join(",", animal.getCommands()));
+                stmt2.setString(4, tableName);
+                /*stmt2.setString(4, animal.getClass().getSimpleName());*/
+
+                stmt1.executeUpdate();
+                stmt2.executeUpdate();
+
+                System.out.println("✅ Животное сохранено в базу");
         } catch (SQLException e) {
             System.err.println("Ошибка при сохранении: " + e.getMessage());
         }
