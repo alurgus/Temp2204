@@ -144,17 +144,43 @@ public class DatabaseService {
     }
 
     public void showCommandsByName(String name) {
-        String sql = "SELECT commands, source_table FROM all_animals WHERE name = ?";
+        // SQL для обновления таблицы all_animals
+        String refreshSql = "INSERT INTO all_animals (name, birthday, commands, source_table) " +
+                "SELECT name, birthday, commands, 'dogs' FROM dogs " +
+                "UNION " +
+                "SELECT name, birthday, commands, 'cats' FROM cats " +
+                "UNION " +
+                "SELECT name, birthday, commands, 'horses' FROM horses " +
+                "UNION " +
+                "SELECT name, birthday, commands, 'hamsters' FROM hamsters " +
+                "UNION " +
+                "SELECT name, birthday, commands, 'donkeys' FROM donkeys " +
+                "ON DUPLICATE KEY UPDATE " +
+                "birthday = VALUES(birthday), " +
+                "commands = VALUES(commands)";
 
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, name);
+        String selectSql = "SELECT commands, source_table FROM all_animals WHERE name = ?";
 
-            ResultSet rs = stmt.executeQuery();
+        try (
+                Statement refreshStmt = connection.createStatement();
+                PreparedStatement selectStmt = connection.prepareStatement(selectSql)
+        ) {
+            // 👉 Вот здесь используется refreshSql:
+            refreshStmt.executeUpdate(refreshSql);
+
+            // Затем ищем животное
+            selectStmt.setString(1, name);
+            ResultSet rs = selectStmt.executeQuery();
 
             if (rs.next()) {
                 String commandsStr = rs.getString("commands");
                 String type = rs.getString("source_table");
-                List<String> commands = Arrays.asList(commandsStr.split(","));
+
+                List<String> commands = new ArrayList<>();
+                if (commandsStr != null && !commandsStr.isBlank()) {
+                    commands = Arrays.asList(commandsStr.split(","));
+                }
+
                 System.out.println("Команды животного '" + name + "' (" + type + "): " + commands);
             } else {
                 System.out.println("Животное с именем '" + name + "' не найдено.");
@@ -165,38 +191,33 @@ public class DatabaseService {
         }
     }
 
-    /*public void showCommandsByName(String name) {
-        String sql = "SELECT commands, source_table FROM all_animals WHERE name = ?";*/
+    public void trainAnimalCommand(String name, String newCommand) {
+        String selectSql = "SELECT commands, source_table FROM all_animals WHERE name = ?";
 
+        try (PreparedStatement selectStmt = connection.prepareStatement(selectSql)) {
+            selectStmt.setString(1, name);
+            ResultSet rs = selectStmt.executeQuery();
 
-        public void trainAnimalCommand(String name, String newCommand) {
-            String selectSql = "SELECT commands, source_table FROM all_animals WHERE name = ?";
-            String updateSql = "UPDATE ? SET commands = ? WHERE name = ?";
+            if (rs.next()) {
+                String existingCommands = rs.getString("commands");
+                String type = rs.getString("source_table"); // таблица для UPDATE
 
-            try (
-                    PreparedStatement selectStmt = connection.prepareStatement(selectSql);
-                    PreparedStatement updateStmt = connection.prepareStatement(updateSql)
-            ) {
-                selectStmt.setString(1, name);
-                ResultSet rs = selectStmt.executeQuery();
+                List<String> commandList = new ArrayList<>();
+                if (existingCommands != null && !existingCommands.isBlank()) {
+                    commandList = new ArrayList<>(Arrays.asList(existingCommands.split(",")));
+                }
 
-                if (rs.next()) {
-                    String existingCommands = rs.getString("commands");
-                    String type = rs.getString("source_table");
-                    List<String> commandList = new ArrayList<>();
+                if (!commandList.contains(newCommand)) {
+                    commandList.add(newCommand);
+                }
 
-                    if (existingCommands != null && !existingCommands.isBlank()) {
-                        commandList = new ArrayList<>(Arrays.asList(existingCommands.split(",")));
-                    }
+                String updatedCommands = String.join(",", commandList);
 
-                    if (!commandList.contains(newCommand)) {
-                        commandList.add(newCommand);
-                    }
-
-                    String updatedCommands = String.join(",", commandList);
-                    updateStmt.setString(1, type);
-                    updateStmt.setString(2, updatedCommands);
-                    updateStmt.setString(3, name);
+                // правильно формируем запрос
+                String updateSql = "UPDATE " + type + " SET commands = ? WHERE name = ?";
+                try (PreparedStatement updateStmt = connection.prepareStatement(updateSql)) {
+                    updateStmt.setString(1, updatedCommands);
+                    updateStmt.setString(2, name);
                     int rows = updateStmt.executeUpdate();
 
                     if (rows > 0) {
@@ -204,14 +225,15 @@ public class DatabaseService {
                     } else {
                         System.out.println("⚠ Не удалось обновить команды.");
                     }
-
-                } else {
-                    System.out.println("❌ Животное с именем '" + name + "' не найдено в базе.");
                 }
 
-            } catch (SQLException e) {
-                System.err.println("Ошибка при обучении: " + e.getMessage());
+            } else {
+                System.out.println("❌ Животное с именем '" + name + "' не найдено в базе.");
             }
+
+        } catch (SQLException e) {
+            System.err.println("Ошибка при обучении: " + e.getMessage());
         }
+    }
 
 }
