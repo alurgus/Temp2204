@@ -10,10 +10,10 @@ public abstract class Animal {
     private LocalDate birthday;
     private List<String> commands;
 
-    public Animal(String name, LocalDate birthday) {
+    public Animal(String name, LocalDate birthday, List<String> commands) {
         this.name = name;
         this.birthday = birthday;
-        this.commands = new ArrayList<>();
+        this.commands = (commands != null) ? new ArrayList<>(commands) : new ArrayList<>();
     }
 
     public String getName() {
