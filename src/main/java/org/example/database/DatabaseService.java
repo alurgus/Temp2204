@@ -15,7 +15,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/*import animals.Animal;*/
+
 
 public class DatabaseService {
     private final String url;
@@ -34,9 +34,9 @@ public class DatabaseService {
     private void connectOnce() {
         try {
             connection = DriverManager.getConnection(url, user, password);
-            System.out.println("✅ Подключение к базе установлено");
+            System.out.println("Подключение к базе установлено");
         } catch (SQLException e) {
-            System.err.println("❌ Ошибка подключения к базе: " + e.getMessage());
+            System.err.println("Ошибка подключения к базе: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -45,7 +45,7 @@ public class DatabaseService {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                System.out.println("🔒 Соединение закрыто");
+                System.out.println("Соединение закрыто");
             }
         } catch (SQLException e) {
             System.err.println("Ошибка при закрытии соединения: " + e.getMessage());
@@ -53,7 +53,7 @@ public class DatabaseService {
     }
 
     public void saveAnimal(Animal animal) {
-        /*String sql = "INSERT INTO all_animals (name, commands, birthday,source_table ) VALUES (?, ?, ?, ?)";*/
+
         String tableName = animal.getClass().getSimpleName().toLowerCase(); // например: "dog", "cat", и т.д.
         String sql1 = "INSERT INTO " + tableName + " (name, commands, birthday) VALUES (?, ?, ?)";
         String sql2 = "INSERT INTO all_animals (name, birthday, commands, source_table) VALUES (?, ?, ?, ?)";
@@ -68,40 +68,17 @@ public class DatabaseService {
                 stmt2.setDate(2, Date.valueOf(animal.getBirthday()));
                 stmt2.setString(3, String.join(",", animal.getCommands()));
                 stmt2.setString(4, tableName);
-                /*stmt2.setString(4, animal.getClass().getSimpleName());*/
+
 
                 stmt1.executeUpdate();
                 stmt2.executeUpdate();
 
-                System.out.println("✅ Животное сохранено в базу");
+                System.out.println("Животное сохранено в базу");
         } catch (SQLException e) {
             System.err.println("Ошибка при сохранении: " + e.getMessage());
         }
     }
 
-    /*public List<Animal> loadAnimals() {
-        List<Animal> result = new ArrayList<>();
-        String sql = "SELECT * FROM all_animals";
-
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-
-                String name = rs.getString("name");
-                LocalDate birth = rs.getDate("birthday").toLocalDate();
-                List<String> commands = Arrays.asList(rs.getString("commands").split(","));
-                String type = rs.getString("source_table");
-                Animal animal = AnimalFactory.create(type, name, birth, commands);
-
-                result.add(animal);
-            }
-        } catch (SQLException e) {
-            System.err.println("Ошибка при загрузке: " + e.getMessage());
-        }
-
-        return result;
-    }*/
 
     public List<Animal> loadAnimals() {
         List<Animal> animals = new ArrayList<>();
@@ -117,11 +94,11 @@ public class DatabaseService {
                 String type = rs.getString("source_table");
 
                 Animal animal = switch (type) {
-                    case "Dogs" -> new Dogs(name, birthday, parseCommands(commands));
-                    case "Cats" -> new Cats(name, birthday, parseCommands(commands));
-                    case "Hamsters" -> new Hamsters(name, birthday, parseCommands(commands));
-                    case "Horses" -> new Horses(name, birthday, parseCommands(commands));
-                    case "Donkeys" -> new Donkeys(name, birthday, parseCommands(commands));
+                    case "dogs" -> new Dogs(name, birthday, parseCommands(commands));
+                    case "cats" -> new Cats(name, birthday, parseCommands(commands));
+                    case "hamsters" -> new Hamsters(name, birthday, parseCommands(commands));
+                    case "horses" -> new Horses(name, birthday, parseCommands(commands));
+                    case "donkeys" -> new Donkeys(name, birthday, parseCommands(commands));
                     default -> {
                         System.out.println("Неизвестный тип животного: " + type);
                         yield null;
@@ -159,31 +136,48 @@ public class DatabaseService {
                 "birthday = VALUES(birthday), " +
                 "commands = VALUES(commands)";
 
-        String selectSql = "SELECT commands, source_table FROM all_animals WHERE name = ?";
+
+        String selectSql = "SELECT name, birthday, commands, source_table FROM all_animals WHERE name = ?";
 
         try (
                 Statement refreshStmt = connection.createStatement();
                 PreparedStatement selectStmt = connection.prepareStatement(selectSql)
         ) {
-            // 👉 Вот здесь используется refreshSql:
+
             refreshStmt.executeUpdate(refreshSql);
 
-            // Затем ищем животное
+
             selectStmt.setString(1, name);
             ResultSet rs = selectStmt.executeQuery();
 
             if (rs.next()) {
+                String animalName = rs.getString("name");
                 String commandsStr = rs.getString("commands");
+                LocalDate birthday = rs.getDate("birthday").toLocalDate();
                 String type = rs.getString("source_table");
+
 
                 List<String> commands = new ArrayList<>();
                 if (commandsStr != null && !commandsStr.isBlank()) {
                     commands = Arrays.asList(commandsStr.split(","));
                 }
 
-                System.out.println("Команды животного '" + name + "' (" + type + "): " + commands);
-            } else {
-                System.out.println("Животное с именем '" + name + "' не найдено.");
+                Animal animal = switch (type) {
+                    case "dogs" -> new Dogs(animalName, birthday, commands);
+                    case "cats" -> new Cats(animalName, birthday, commands);
+                    case "hamsters" -> new Hamsters(animalName, birthday, commands);
+                    case "horses" -> new Horses(animalName, birthday, commands);
+                    case "donkeys" -> new Donkeys(animalName, birthday, commands);
+                    default -> null;
+                };
+                    if (animal != null) {
+                        System.out.println("Команды животного '" + name + "' (" + animal.getType() + "): " + animal.getCommands());
+                    } else {
+                        System.out.println(" Не удалось распознать тип животного: " + type);
+                    }
+
+
+
             }
 
         } catch (SQLException e) {
@@ -221,14 +215,14 @@ public class DatabaseService {
                     int rows = updateStmt.executeUpdate();
 
                     if (rows > 0) {
-                        System.out.println("✅ Команда добавлена животному '" + name + "'");
+                        System.out.println(" Команда добавлена животному '" + name + "'");
                     } else {
-                        System.out.println("⚠ Не удалось обновить команды.");
+                        System.out.println(" Не удалось обновить команды.");
                     }
                 }
 
             } else {
-                System.out.println("❌ Животное с именем '" + name + "' не найдено в базе.");
+                System.out.println(" Животное с именем '" + name + "' не найдено в базе.");
             }
 
         } catch (SQLException e) {

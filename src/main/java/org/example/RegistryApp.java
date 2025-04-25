@@ -33,7 +33,7 @@ public class RegistryApp {
 
     public static void main(String[] args) {
 
-        Properties config = Config.load(); // загружаем config.properties
+        Properties config = Config.load();
         System.out.println("Connecting to: " + config.getProperty("db.url"));
 
          db = new DatabaseService(
@@ -80,10 +80,6 @@ public class RegistryApp {
             System.out.println("Введите дату рождения (ГГГГ-ММ-ДД):");
             LocalDate birthday = LocalDate.parse(scanner.nextLine());
 
-
-            /*System.out.println("Выберите тип животного: dog / cat / hamster / horse / donkey");
-            String type = scanner.nextLine().toLowerCase();*/
-
             Map<String, String> typeMap = Map.of(
                     "1", "dogs",
                     "2", "cats",
@@ -102,7 +98,7 @@ public class RegistryApp {
                     """);
 
             String input = scanner.nextLine().toLowerCase();
-            String type = typeMap.getOrDefault(input, input); // если введена строка (dog), то останется как есть
+            String type = typeMap.getOrDefault(input, input);
 
             List<String> commands = new ArrayList<>();
             System.out.println("Введите команды (по одной на строку, пустая строка — завершение):");
@@ -127,7 +123,7 @@ public class RegistryApp {
             if (animal != null) {
                 animals.add(animal);
                 db.saveAnimal(animal);
-                counter.add(); // увеличиваем счётчик
+                counter.add();
                 System.out.println("Животное добавлено: " + animal.getName());
             }
         } catch (Exception e) {
@@ -140,13 +136,7 @@ public class RegistryApp {
         String name = scanner.nextLine();
 
         db.showCommandsByName(name);
-        /*Animal animal = findAnimalByName(name);*/
 
-        /*if (animal != null) {
-            System.out.println("Команды: " + animal.getCommands());
-        } else {
-            System.out.println("Животное не найдено.");
-        }*/
     }
 
     private static void trainAnimal() {
@@ -157,30 +147,23 @@ public class RegistryApp {
         String cmd = scanner.nextLine();
         db.trainAnimalCommand(name, cmd);
 
-        /*Animal animal = findAnimalByName(name);
-        if (animal != null) {
-            System.out.println("Введите новую команду:");
-            String cmd = scanner.nextLine();
-            animal.addCommand(cmd);
-            System.out.println("Команда добавлена.");
-        } else {
-            System.out.println("Животное не найдено.");
-        }*/
+
     }
 
     private static void listAllAnimals() {
-        if (animals.isEmpty()) {
+        animals = db.loadAnimals();
+       if (animals.isEmpty()) {
             System.out.println("Реестр пуст.");
         } else {
             animals.forEach(System.out::println);
         }
     }
 
-    private static Animal findAnimalByName(String name) {
+    /*private static Animal findAnimalByName(String name) {
         return animals.stream()
                 .filter(a -> a.getName().equalsIgnoreCase(name))
                 .findFirst()
                 .orElse(null);
-    }
+    }*/
 
 }

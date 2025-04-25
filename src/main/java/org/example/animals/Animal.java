@@ -47,7 +47,7 @@ public abstract class Animal {
 
     @Override
     public String toString() {
-        return name + " (" + birthday + ") — Команды: " + commands;
+        return name + " (" + getType() + ", " + birthday + ") — Команды: " + commands;
     }
 
 
